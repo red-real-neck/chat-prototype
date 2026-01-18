@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { AppLayout, ChatList, ChatListItem, ChatWindow, MessageInput, MessageList } from '@/components';
 import { useChatsStore } from '@/store/chatsStore';
 import { useMessagesStore } from '@/store/messagesStore';
@@ -16,12 +16,17 @@ function App() {
     loadChats,
     setActiveChat,
     updateLastMessage,
-    updateChatWithIncomingMessage
+    updateChatWithIncomingMessage,
+    syncChatPreview
   } = useChatsStore();
+  
+  // Store unreadCount before it gets reset when opening chat
+  const unreadCountBeforeOpenRef = useRef<Record<string, number>>({});
 
   const {
     messagesByChatId,
     loadingByChatId,
+    loadedByChatId,
     loadMessages,
     sendMessage: sendMessageAction,
     receiveSocketMessage
@@ -33,19 +38,47 @@ function App() {
 
   // Load messages when active chat changes
   useEffect(() => {
-    if (activeChatId && !messagesByChatId[activeChatId]) {
-      loadMessages(activeChatId);
+    if (activeChatId) {
+      // Load if not loaded yet and not currently loading
+      // Or if messages array is empty (to be safe)
+      const hasMessages = messagesByChatId[activeChatId] && messagesByChatId[activeChatId].length > 0;
+      const isLoaded = loadedByChatId?.[activeChatId];
+      const isLoading = loadingByChatId[activeChatId];
+      
+      if (!isLoading && (!isLoaded || !hasMessages)) {
+        loadMessages(activeChatId);
+      }
     }
-  }, [activeChatId, messagesByChatId, loadMessages]);
+  }, [activeChatId, messagesByChatId, loadingByChatId, loadedByChatId, loadMessages]);
+
+  // Sync preview when messages are loaded or updated
+  // Sync preview for all chats based on their actual last message
+  useEffect(() => {
+    Object.keys(messagesByChatId).forEach((chatId) => {
+      const messages = messagesByChatId[chatId];
+      if (messages && messages.length > 0) {
+        // Get the last message (messages are sorted by timestamp)
+        const lastMessage = messages[messages.length - 1];
+        // Only sync if this message actually exists in the array
+        if (lastMessage && lastMessage.id) {
+          syncChatPreview(chatId, lastMessage.content, lastMessage.timestamp);
+        }
+      }
+    });
+  }, [messagesByChatId, syncChatPreview]);
 
   // Subscribe to mock socket for real-time messages
   useEffect(() => {
     const handleIncomingMessage = (message: Message) => {
       if (message.chatId === activeChatId) {
         // Message is for active chat - add to messages store
+        // Preview will be synced automatically via useEffect that watches messagesByChatId
         receiveSocketMessage(message);
       } else {
-        // Message is for inactive chat - update chat preview
+        // Message is for inactive chat - add to messages store first
+        receiveSocketMessage(message);
+        // Then update chat preview (will be synced from actual messages via useEffect)
+        // But also update unread count immediately
         updateChatWithIncomingMessage(message.chatId, message.content, message.timestamp);
       }
     };
@@ -60,13 +93,29 @@ function App() {
   const activeChat = chats.find(chat => chat.id === activeChatId);
   const messages = activeChatId ? messagesByChatId[activeChatId] || [] : [];
   const isLoadingMessages = activeChatId ? loadingByChatId[activeChatId] : false;
+  
+  // Get unreadCount before it was reset (for showing divider)
+  // Use stored value if available, otherwise use current (which might be 0 after reset)
+  const unreadCountForDisplay = activeChatId 
+    ? (unreadCountBeforeOpenRef.current[activeChatId] ?? activeChat?.unreadCount ?? 0)
+    : 0;
+
+  const handleChatClick = (chatId: string) => {
+    // Store unreadCount before opening chat
+    const chat = chats.find(c => c.id === chatId);
+    if (chat) {
+      unreadCountBeforeOpenRef.current[chatId] = chat.unreadCount;
+    }
+    setActiveChat(chatId);
+  };
 
   const handleSendMessage = async (content: string) => {
     if (!activeChatId) return;
 
     try {
       await sendMessageAction(activeChatId, content, CURRENT_USER_ID);
-      // Update chat preview with the sent message
+      // Preview will be synced automatically via useEffect that watches messagesByChatId
+      // Update last message for immediate UI feedback (but preview will be synced from actual message)
       updateLastMessage(activeChatId, content, new Date());
     } catch (error) {
       console.error('Failed to send message:', error);
@@ -116,7 +165,7 @@ function App() {
             key={chat.id}
             chat={chat}
             isActive={chat.id === activeChatId}
-            onClick={() => setActiveChat(chat.id)}
+            onClick={() => handleChatClick(chat.id)}
           />
         ))}
       </ChatList>
@@ -138,7 +187,12 @@ function App() {
             </div>
           </div>
         ) : (
-          <MessageList messages={messages} currentUserId={CURRENT_USER_ID} />
+          <MessageList 
+            messages={messages} 
+            currentUserId={CURRENT_USER_ID}
+            unreadCount={unreadCountForDisplay}
+            chatId={activeChatId || undefined}
+          />
         )}
       </ChatWindow>
     </AppLayout>

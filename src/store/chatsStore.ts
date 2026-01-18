@@ -8,12 +8,15 @@ interface ChatsState {
   activeChatId: string | null;
   isLoading: boolean;
   error: string | null;
+  lastReadMessageIdByChatId: Record<string, string | null>;
 
   // Actions
   loadChats: () => Promise<void>;
   setActiveChat: (chatId: string) => void;
   updateLastMessage: (chatId: string, lastMessage: string, lastMessageAt: Date) => void;
   updateChatWithIncomingMessage: (chatId: string, message: string, timestamp: Date) => void;
+  syncChatPreview: (chatId: string, lastMessage: string, lastMessageAt: Date) => void;
+  markChatAsRead: (chatId: string, lastMessageId: string) => void;
 }
 
 export const useChatsStore = create<ChatsState>((set, get) => ({
@@ -22,6 +25,7 @@ export const useChatsStore = create<ChatsState>((set, get) => ({
   activeChatId: null,
   isLoading: false,
   error: null,
+  lastReadMessageIdByChatId: {},
 
   // Actions
   loadChats: async () => {
@@ -44,7 +48,19 @@ export const useChatsStore = create<ChatsState>((set, get) => ({
   },
 
   setActiveChat: (chatId: string) => {
-    set({ activeChatId: chatId });
+    set((state) => {
+      // Сбросить счетчик непрочитанных для открываемого чата
+      const updatedChats = state.chats.map((chat) =>
+        chat.id === chatId
+          ? { ...chat, unreadCount: 0 }
+          : chat
+      );
+      
+      return {
+        activeChatId: chatId,
+        chats: updatedChats,
+      };
+    });
   },
 
   updateLastMessage: (chatId: string, lastMessage: string, lastMessageAt: Date) => {
@@ -69,6 +85,25 @@ export const useChatsStore = create<ChatsState>((set, get) => ({
             }
           : chat
       ),
+    }));
+  },
+
+  syncChatPreview: (chatId: string, lastMessage: string, lastMessageAt: Date) => {
+    set((state) => ({
+      chats: state.chats.map((chat) =>
+        chat.id === chatId
+          ? { ...chat, lastMessage, lastMessageAt }
+          : chat
+      ),
+    }));
+  },
+
+  markChatAsRead: (chatId: string, lastMessageId: string) => {
+    set((state) => ({
+      lastReadMessageIdByChatId: {
+        ...state.lastReadMessageIdByChatId,
+        [chatId]: lastMessageId,
+      },
     }));
   },
 }));

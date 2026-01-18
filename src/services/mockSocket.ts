@@ -63,12 +63,18 @@ class MockWebSocket {
       const randomSender = SENDERS[Math.floor(Math.random() * SENDERS.length)];
       const randomTemplate = INCOMING_MESSAGE_TEMPLATES[Math.floor(Math.random() * INCOMING_MESSAGE_TEMPLATES.length)];
 
-      // Create an optimistic message that represents an incoming message
-      const incomingMessage = createOptimisticMessage(randomChatId, randomTemplate, randomSender);
+      // Create timestamp that is not in the future
+      // Use current time, but ensure it's not later than now
+      const now = new Date();
+      const timestamp = new Date(Math.min(now.getTime(), Date.now()));
 
-      // Convert optimistic message to regular message with 'sent' status
+      // Create message with controlled timestamp
       const message: Message = {
-        ...incomingMessage,
+        id: `msg-${randomChatId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        chatId: randomChatId,
+        content: randomTemplate,
+        sender: randomSender,
+        timestamp,
         status: 'sent',
       };
 

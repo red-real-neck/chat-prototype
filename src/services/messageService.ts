@@ -43,12 +43,32 @@ function generateRandomMessage(chatId: string, index: number): Message {
   // Generate timestamp: older messages first, newer messages later
   // Spread messages over the last 30 days
   const daysAgo = Math.floor((MESSAGES_COUNT - index - 1) / (MESSAGES_COUNT / 30));
-  const hoursVariation = Math.floor(Math.random() * 24);
-  const minutesVariation = Math.floor(Math.random() * 60);
-
+  
   const timestamp = new Date();
-  timestamp.setDate(timestamp.getDate() - daysAgo);
-  timestamp.setHours(hoursVariation, minutesVariation, 0, 0);
+  const now = new Date();
+  
+  // Set date first
+  timestamp.setDate(now.getDate() - daysAgo);
+
+  // For today (daysAgo === 0), ensure we don't generate future time
+  if (daysAgo === 0) {
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    
+    // Generate random hour up to current hour
+    const hoursVariation = Math.floor(Math.random() * (currentHour + 1));
+    
+    // If we picked the current hour, limit minutes to current minute
+    const maxMinutes = (hoursVariation === currentHour) ? currentMinute + 1 : 60;
+    const minutesVariation = Math.floor(Math.random() * maxMinutes);
+    
+    timestamp.setHours(hoursVariation, minutesVariation, 0, 0);
+  } else {
+    // For past days, any time is fine
+    const hoursVariation = Math.floor(Math.random() * 24);
+    const minutesVariation = Math.floor(Math.random() * 60);
+    timestamp.setHours(hoursVariation, minutesVariation, 0, 0);
+  }
 
   // Random status with 'sent' being most common
   const statusWeights = ['sent', 'sent', 'sent', 'delivered', 'read'] as const;
@@ -92,12 +112,16 @@ export async function sendMessage(
   // Generate a new message with real ID
   const realId = `msg-${chatId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
+  // Ensure timestamp is not in the future
+  // Use the time when the function was called (before delay), not after
+  const timestamp = new Date(Date.now() - delay);
+
   const message: Message = {
     id: realId,
     chatId,
     content,
     sender,
-    timestamp: new Date(),
+    timestamp,
     status: 'sent',
   };
 

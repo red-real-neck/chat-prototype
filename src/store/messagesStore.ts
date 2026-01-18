@@ -7,6 +7,7 @@ interface MessagesState {
   // Normalized storage: Record<chatId, Message[]>
   messagesByChatId: Record<string, Message[]>;
   loadingByChatId: Record<string, boolean>;
+  loadedByChatId: Record<string, boolean>;
 
   // Actions
   loadMessages: (chatId: string) => Promise<void>;
@@ -22,6 +23,7 @@ export const useMessagesStore = create<MessagesState>((set) => ({
   // Initial state
   messagesByChatId: {},
   loadingByChatId: {},
+  loadedByChatId: {},
 
   // Actions
   loadMessages: async (chatId: string) => {
@@ -34,6 +36,7 @@ export const useMessagesStore = create<MessagesState>((set) => ({
       set((state) => ({
         messagesByChatId: { ...state.messagesByChatId, [chatId]: messages },
         loadingByChatId: { ...state.loadingByChatId, [chatId]: false },
+        loadedByChatId: { ...state.loadedByChatId, [chatId]: true },
       }));
     } catch (error) {
       set((state) => ({
@@ -62,9 +65,31 @@ export const useMessagesStore = create<MessagesState>((set) => ({
       // Confirm optimistic message with real data
       set((state) => {
         const chatMessages = state.messagesByChatId[chatId] || [];
+        const now = new Date();
+        
+        // Find the optimistic message to preserve its timestamp
+        const optimisticMsg = chatMessages.find(msg => msg.id === optimisticMessage.id);
+        const optimisticTimestamp = optimisticMsg?.timestamp;
+        
+        // Use optimistic timestamp if real message timestamp is in the future
+        // or if real message timestamp is later than optimistic timestamp
+        let finalTimestamp = realMessage.timestamp;
+        if (optimisticTimestamp) {
+          // If real message timestamp is in the future or later than optimistic, use optimistic
+          if (realMessage.timestamp.getTime() > now.getTime() || 
+              realMessage.timestamp.getTime() > optimisticTimestamp.getTime()) {
+            finalTimestamp = optimisticTimestamp;
+          }
+        }
+        
+        // Ensure timestamp is not in the future
+        if (finalTimestamp.getTime() > now.getTime()) {
+          finalTimestamp = now;
+        }
+
         const updatedMessages = chatMessages.map((msg) =>
           msg.id === optimisticMessage.id
-            ? { ...realMessage } // Replace with real message
+            ? { ...realMessage, timestamp: finalTimestamp } // Replace with real message but preserve timestamp
             : msg
         );
 
@@ -120,9 +145,31 @@ export const useMessagesStore = create<MessagesState>((set) => ({
     // Add the message and ensure it's sorted by timestamp
     set((state) => {
       const chatMessages = state.messagesByChatId[message.chatId] || [];
-      const updatedMessages = [...chatMessages, message].sort(
-        (a, b) => a.timestamp.getTime() - b.timestamp.getTime()
-      );
+      const now = new Date();
+      
+      // Ensure timestamp is not in the future
+      let messageTimestamp = message.timestamp;
+      if (messageTimestamp.getTime() > now.getTime()) {
+        messageTimestamp = now;
+      }
+      
+      const messageWithValidTimestamp = { ...message, timestamp: messageTimestamp };
+      
+      // Check for duplicates by ID
+      const existingMessageIndex = chatMessages.findIndex(msg => msg.id === messageWithValidTimestamp.id);
+      let updatedMessages;
+      
+      if (existingMessageIndex >= 0) {
+        // Update existing message instead of adding duplicate
+        updatedMessages = [...chatMessages];
+        updatedMessages[existingMessageIndex] = messageWithValidTimestamp;
+      } else {
+        // Add new message
+        updatedMessages = [...chatMessages, messageWithValidTimestamp];
+      }
+      
+      // Sort by timestamp
+      updatedMessages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
 
       return {
         messagesByChatId: {

@@ -5,3 +5,4 @@ export { ChatWindow } from './ChatWindow';
 export { MessageInput } from './MessageInput';
 export { MessageItem } from './MessageItem';
 export { MessageList } from './MessageList';
+export { NewMessagesDivider } from './NewMessagesDivider';

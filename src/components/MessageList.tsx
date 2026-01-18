@@ -1,59 +1,50 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, memo, useRef } from 'react';
+import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso';
 import { MessageItem } from './MessageItem';
+import { NewMessagesDivider } from './NewMessagesDivider';
 import type { Message, OptimisticMessage } from '@/domain/message';
 
 interface MessageListProps {
   messages: (Message | OptimisticMessage)[];
   currentUserId: string;
+  unreadCount?: number;
+  chatId?: string;
 }
 
-const MESSAGE_HEIGHT = 70;
-
-
-export const MessageList: React.FC<MessageListProps> = ({
+const MessageListComponent: React.FC<MessageListProps> = ({
   messages,
   currentUserId,
+  unreadCount = 0,
+  chatId,
 }) => {
-  const containerRef = React.useRef<HTMLDivElement>(null);
-  const [scrollTop, setScrollTop] = React.useState(0);
-  const [containerHeight, setContainerHeight] = React.useState(400);
-
-  // Update container height when component mounts or resizes
+  const virtuosoRef = useRef<VirtuosoHandle>(null);
+  const previousChatIdRef = useRef<string | undefined>(chatId);
+  const [showScrollButton, setShowScrollButton] = React.useState(false);
+  
+  // Reset scroll button when chat changes
   useEffect(() => {
-    const updateHeight = () => {
-      if (containerRef.current) {
-        setContainerHeight(containerRef.current.clientHeight);
-      }
-    };
-
-    updateHeight();
-    window.addEventListener('resize', updateHeight);
-    return () => window.removeEventListener('resize', updateHeight);
-  }, []);
-
-  // Calculate visible range
-  const visibleRange = useMemo(() => {
-    const startIndex = Math.floor(scrollTop / MESSAGE_HEIGHT);
-    const endIndex = Math.min(
-      startIndex + Math.ceil(containerHeight / MESSAGE_HEIGHT) + 2, // +2 for buffer
-      messages.length
-    );
-    return { startIndex: Math.max(0, startIndex - 1), endIndex }; // -1 for buffer
-  }, [scrollTop, containerHeight, messages.length]);
-
-  // Auto-scroll to bottom when messages change
-  useEffect(() => {
-    if (messages.length > 0 && containerRef.current) {
-      containerRef.current.scrollTop = containerRef.current.scrollHeight;
-      setScrollTop(containerRef.current.scrollTop);
+    if (previousChatIdRef.current !== chatId) {
+      setShowScrollButton(false);
+      previousChatIdRef.current = chatId;
     }
-  }, [messages.length]);
+  }, [chatId]);
 
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    setScrollTop(e.currentTarget.scrollTop);
+  // Calculate index of first new message (based on unreadCount)
+  const firstNewMessageIndex = useMemo(() => {
+    if (unreadCount === 0 || messages.length === 0) {
+      return -1;
+    }
+    return Math.max(0, messages.length - unreadCount);
+  }, [messages.length, unreadCount]);
+
+  const scrollToBottom = () => {
+    virtuosoRef.current?.scrollToIndex({
+      index: messages.length - 1,
+      align: 'end',
+      behavior: 'smooth',
+    });
+    setShowScrollButton(false);
   };
-
-  const visibleMessages = messages.slice(visibleRange.startIndex, visibleRange.endIndex);
 
   if (messages.length === 0) {
     return (
@@ -68,34 +59,45 @@ export const MessageList: React.FC<MessageListProps> = ({
   }
 
   return (
-    <div className="flex-1 h-full">
-      <div
-        ref={containerRef}
-        className="overflow-y-auto h-full scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
-        onScroll={handleScroll}
-      >
-        {/* Spacer for content above visible area */}
-        <div style={{ height: visibleRange.startIndex * MESSAGE_HEIGHT }} />
-
-        {/* Visible messages */}
-        {visibleMessages.map((message, index) => {
-          const actualIndex = visibleRange.startIndex + index;
+    <div className="flex-1 h-full relative">
+      <Virtuoso
+        ref={virtuosoRef}
+        style={{ height: '100%' }}
+        data={messages}
+        initialTopMostItemIndex={messages.length - 1} // Start at bottom
+        followOutput="auto" // Stick to bottom when new messages arrive
+        atBottomStateChange={(atBottom) => setShowScrollButton(!atBottom)}
+        itemContent={(index, message) => {
+          const shouldShowDivider = 
+            firstNewMessageIndex >= 0 && 
+            index === firstNewMessageIndex &&
+            index > 0;
+          
           return (
-            <div
-              key={message.id || `temp-${actualIndex}`}
-              className="px-4 py-1"
-            >
+            <div className="pb-1 px-4">
+              {shouldShowDivider && <NewMessagesDivider />}
               <MessageItem
                 message={message}
                 isOwn={message.sender === currentUserId}
               />
             </div>
           );
-        })}
+        }}
+      />
 
-        {/* Spacer for content below visible area */}
-        <div style={{ height: (messages.length - visibleRange.endIndex) * MESSAGE_HEIGHT }} />
-      </div>
+      {showScrollButton && (
+        <button
+          onClick={scrollToBottom}
+          className="absolute bottom-4 right-4 bg-blue-500 text-white p-2 rounded-full shadow-lg hover:bg-blue-600 transition-colors z-10"
+          aria-label="Scroll to bottom"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M14.707 12.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 14.586V3a1 1 0 012 0v11.586l2.293-2.293a1 1 0 011.414 0z" clipRule="evenodd" />
+          </svg>
+        </button>
+      )}
     </div>
   );
 };
+
+export const MessageList = memo(MessageListComponent);
