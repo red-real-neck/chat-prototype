@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { AppLayout, ChatList, ChatListItem, ChatWindow, MessageInput, MessageList } from '@/components';
+import { AppLayout, ChatList, ChatListItem, ChatWindow, MessageInput, MessageList, MessageSkeleton } from '@/components';
 import { useChatsStore } from '@/store/chatsStore';
 import { useMessagesStore } from '@/store/messagesStore';
 import { mockSocket } from '@/services/mockSocket';
@@ -180,12 +180,7 @@ function App() {
         }
       >
         {isLoadingMessages ? (
-          <div className="flex-1 flex items-center justify-center p-4">
-            <div className="text-center text-gray-500">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
-              <p>Loading messages...</p>
-            </div>
-          </div>
+          <MessageSkeleton />
         ) : (
           <MessageList 
             messages={messages} 
