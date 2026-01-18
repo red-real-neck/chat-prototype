@@ -1,15 +1,11 @@
-# React Chat Application
-
-Многофункциональное чат-приложение с виртуализацией, real-time обновлениями и оптимистическим UI. Проект демонстрирует современные паттерны React-разработки с фокусом на производительность и масштабируемость.
-
-## 🚀 Запуск
+## Запуск
 
 ```bash
 npm install
 npm run dev
 ```
 
-## 🏗 Архитектура
+## Архитектура
 
 ### Общая структура
 
@@ -51,7 +47,7 @@ src/
 - **Оптимистичные обновления**: Мгновенная обратная связь для пользователя
 - **Виртуализация**: Поддержка тысяч сообщений без лагов
 
-## 🗄 State Management (Zustand)
+## State Management (Zustand)
 
 ### Почему Zustand?
 
@@ -78,44 +74,7 @@ loadedByChatId: Record<string, boolean>
 - **Надежность**: Избегание дублирования данных
 - **Тестируемость**: Легко мокать store в тестах
 
-## ⚡ Виртуализация (react-virtuoso)
-
-### Решение проблемы
-
-Классический список сообщений с 5000+ элементами вызывает серьезные проблемы производительности:
-
-- **Memory leaks**: Каждый элемент в DOM
-- **Slow rendering**: Перерендер всех компонентов
-- **Poor UX**: Лаги при скролле
-
-### Внедрение виртуализации
-
-Используем `react-virtuoso` вместо `react-window` по нескольким причинам:
-
-1. **Готовые компоненты**: `Virtuoso` для вертикального списка
-2. **Умный скролл**: Автоматическое следование за новыми сообщениями
-3. **Интеграция**: Легче работать с существующим кодом
-4. **Производительность**: Оптимизирован для больших списков
-
-```tsx
-<Virtuoso
-  data={messages}
-  initialTopMostItemIndex={messages.length - 1} // Начинаем снизу
-  followOutput="auto" // Автоскролл к новым сообщениям
-  atBottomStateChange={(atBottom) => setShowScrollButton(!atBottom)}
-  itemContent={(index, message) => (
-    <MessageItem message={message} isOwn={message.sender === currentUserId} />
-  )}
-/>
-```
-
-### Результат
-
-- **5000+ сообщений**: Без лагов и утечек памяти
-- **Smooth scrolling**: 60fps даже на мобильных устройствах
-- **Memory efficient**: Только видимые элементы в DOM
-
-## 🚀 Оптимизации
+## Оптимизации
 
 ### Производительность
 
@@ -124,35 +83,11 @@ loadedByChatId: Record<string, boolean>
 3. **Normalized storage**: Избежание глубоких копий
 4. **Lazy loading**: Сообщения загружаются по требованию
 
-### UX оптимизации
-
-1. **Optimistic UI**: Мгновенная отправка сообщений
-2. **Skeleton loading**: Плавные состояния загрузки
-3. **Smart scrolling**: Автоскролл к новым сообщениям
-4. **Unread indicators**: "Новые сообщения" разделитель
-
-### Технические оптимизации
-
-1. **Strict TypeScript**: Полная типизация без `any`
-2. **Tree shaking**: Только используемый код в bundle
-3. **Code splitting**: Ленивая загрузка компонентов
-4. **Service layer**: Изоляция асинхронности
-
-## 🔧 Технологии
-
-- **React 19**: Новейшие возможности и оптимизации
-- **TypeScript**: Strict mode, без `any`
-- **Zustand**: Легкое управление состоянием
-- **TailwindCSS**: Утилитарный CSS фреймворк
-- **react-virtuoso**: Виртуализация списков
-- **Framer Motion**: Анимации (только для новых сообщений)
-- **Jest + RTL**: Тестирование поведения
-
-## 📊 Производительность
+## Производительность
 
 ### Метрики
 
-- **Bundle size**: < 300KB (gzipped)
+- **Bundle size**: ~ 300KB (gzipped)
 - **First paint**: < 1s на современных устройствах
 - **Scroll performance**: 60fps с 10000+ сообщений
 - **Memory usage**: Стабильное потребление при росте данных
@@ -165,36 +100,6 @@ npm run test     # Запуск тестов
 npm run lint     # Проверка качества кода
 ```
 
-## 🎯 Возможные улучшения
-
-### Функциональность
-
-1. **Real WebSocket**: Замена mock на настоящий WebSocket
-2. **Message reactions**: Эмодзи реакции на сообщения
-3. **File uploads**: Отправка изображений/файлов
-4. **Message search**: Поиск по истории сообщений
-5. **Push notifications**: Браузерные уведомления
-
-### Производительность
-
-1. **Pagination**: Загрузка сообщений порциями
-2. **Message compression**: Сжатие длинных сообщений
-3. **Offline support**: Service Worker для оффлайн режима
-4. **Image optimization**: Lazy loading и сжатие изображений
-
-### UX
-
-1. **Dark mode**: Темная тема интерфейса
-2. **Internationalization**: Поддержка нескольких языков
-3. **Accessibility**: Полная поддержка screen readers
-4. **Mobile optimization**: PWA возможности
-
-### Архитектура
-
-1. **GraphQL**: Более эффективные запросы данных
-2. **Microfrontends**: Разделение на независимые модули
-3. **Monorepo**: Управление несколькими связанными приложениями
-
 ## 🧪 Тестирование
 
 ```bash
@@ -202,25 +107,6 @@ npm run test           # Запуск всех тестов
 npm run test:watch     # Watch mode
 npm run test:coverage  # С покрытием
 ```
-
-### Стратегия тестирования
-
-- **Behavior tests**: Тестирование поведения, не реализации
-- **Integration tests**: Тестирование взаимодействия компонентов
-- **Store isolation**: Моки store для unit тестов
-- **No snapshots**: Избежание хрупких snapshot тестов
-
-## 📝 Разработка
-
-### Scripts
-
-```bash
-npm run dev      # Development server
-npm run build    # Production build
-npm run preview  # Preview production build
-npm run lint     # ESLint
-npm run lint:fix # Auto-fix ESLint issues
-npm run format   # Prettier formatting
 ```
 
 ### Code quality
@@ -234,6 +120,7 @@ npm run format   # Prettier formatting
 ### Commit convention
 
 ```
+init: add new domain
 feat: add new feature
 fix: bug fix
 docs: documentation
@@ -244,7 +131,3 @@ chore: maintenance
 ```
 
 ---
-
-**Автор**: Senior Frontend Developer
-**Технологии**: React 19, TypeScript, Zustand, react-virtuoso
-**Фокус**: Производительность, масштабируемость, UX
