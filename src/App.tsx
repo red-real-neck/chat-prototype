@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import { AppLayout, ChatList, ChatListItem, ChatWindow, MessageInput, MessageList } from '@/components';
 import { useChatsStore } from '@/store/chatsStore';
 import { useMessagesStore } from '@/store/messagesStore';
+import { mockSocket } from '@/services/mockSocket';
+import type { Message } from '@/domain/message';
 
 const CURRENT_USER_ID = 'You';
 
@@ -13,14 +15,16 @@ function App() {
     error,
     loadChats,
     setActiveChat,
-    updateLastMessage
+    updateLastMessage,
+    updateChatWithIncomingMessage
   } = useChatsStore();
 
   const {
     messagesByChatId,
     loadingByChatId,
     loadMessages,
-    sendMessage: sendMessageAction
+    sendMessage: sendMessageAction,
+    receiveSocketMessage
   } = useMessagesStore();
 
   useEffect(() => {
@@ -33,6 +37,25 @@ function App() {
       loadMessages(activeChatId);
     }
   }, [activeChatId, messagesByChatId, loadMessages]);
+
+  // Subscribe to mock socket for real-time messages
+  useEffect(() => {
+    const handleIncomingMessage = (message: Message) => {
+      if (message.chatId === activeChatId) {
+        // Message is for active chat - add to messages store
+        receiveSocketMessage(message);
+      } else {
+        // Message is for inactive chat - update chat preview
+        updateChatWithIncomingMessage(message.chatId, message.content, message.timestamp);
+      }
+    };
+
+    mockSocket.subscribe(handleIncomingMessage);
+
+    return () => {
+      mockSocket.unsubscribe();
+    };
+  }, [activeChatId, receiveSocketMessage, updateChatWithIncomingMessage]);
 
   const activeChat = chats.find(chat => chat.id === activeChatId);
   const messages = activeChatId ? messagesByChatId[activeChatId] || [] : [];

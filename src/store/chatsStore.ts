@@ -13,6 +13,7 @@ interface ChatsState {
   loadChats: () => Promise<void>;
   setActiveChat: (chatId: string) => void;
   updateLastMessage: (chatId: string, lastMessage: string, lastMessageAt: Date) => void;
+  updateChatWithIncomingMessage: (chatId: string, message: string, timestamp: Date) => void;
 }
 
 export const useChatsStore = create<ChatsState>((set, get) => ({
@@ -51,6 +52,21 @@ export const useChatsStore = create<ChatsState>((set, get) => ({
       chats: state.chats.map((chat) =>
         chat.id === chatId
           ? { ...chat, lastMessage, lastMessageAt, unreadCount: 0 }
+          : chat
+      ),
+    }));
+  },
+
+  updateChatWithIncomingMessage: (chatId: string, message: string, timestamp: Date) => {
+    set((state) => ({
+      chats: state.chats.map((chat) =>
+        chat.id === chatId
+          ? {
+              ...chat,
+              lastMessage: message,
+              lastMessageAt: timestamp,
+              unreadCount: chat.id !== state.activeChatId ? chat.unreadCount + 1 : 0
+            }
           : chat
       ),
     }));
