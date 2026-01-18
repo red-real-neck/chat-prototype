@@ -1,43 +1,59 @@
-// @ts-nocheck
-import React, { useEffect } from 'react';
-import { List } from 'react-window';
+import React, { useEffect, useMemo } from 'react';
 import { MessageItem } from './MessageItem';
 import type { Message, OptimisticMessage } from '@/domain/message';
 
 interface MessageListProps {
   messages: (Message | OptimisticMessage)[];
   currentUserId: string;
-  height?: number;
 }
 
-const MESSAGE_HEIGHT = 80; // Fixed height for each message item
+const MESSAGE_HEIGHT = 70;
+
 
 export const MessageList: React.FC<MessageListProps> = ({
   messages,
   currentUserId,
-  height = 400,
 }) => {
-  const listRef = React.useRef<any>(null);
-  const shouldAutoScrollRef = React.useRef(true);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const [scrollTop, setScrollTop] = React.useState(0);
+  const [containerHeight, setContainerHeight] = React.useState(400);
+
+  // Update container height when component mounts or resizes
+  useEffect(() => {
+    const updateHeight = () => {
+      if (containerRef.current) {
+        setContainerHeight(containerRef.current.clientHeight);
+      }
+    };
+
+    updateHeight();
+    window.addEventListener('resize', updateHeight);
+    return () => window.removeEventListener('resize', updateHeight);
+  }, []);
+
+  // Calculate visible range
+  const visibleRange = useMemo(() => {
+    const startIndex = Math.floor(scrollTop / MESSAGE_HEIGHT);
+    const endIndex = Math.min(
+      startIndex + Math.ceil(containerHeight / MESSAGE_HEIGHT) + 2, // +2 for buffer
+      messages.length
+    );
+    return { startIndex: Math.max(0, startIndex - 1), endIndex }; // -1 for buffer
+  }, [scrollTop, containerHeight, messages.length]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
-    if (shouldAutoScrollRef.current && messages.length > 0) {
-      listRef.current?.scrollToRow({ index: messages.length - 1, align: 'end' });
+    if (messages.length > 0 && containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
+      setScrollTop(containerRef.current.scrollTop);
     }
   }, [messages.length]);
 
-
-  const renderMessage = ({ index, style }: { index: number; style: React.CSSProperties }) => {
-    const message = messages[index];
-    const isOwn = message.sender === currentUserId;
-
-    return (
-      <div style={style} className="px-4">
-        <MessageItem message={message} isOwn={isOwn} />
-      </div>
-    );
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    setScrollTop(e.currentTarget.scrollTop);
   };
+
+  const visibleMessages = messages.slice(visibleRange.startIndex, visibleRange.endIndex);
 
   if (messages.length === 0) {
     return (
@@ -52,16 +68,34 @@ export const MessageList: React.FC<MessageListProps> = ({
   }
 
   return (
-    <div className="flex-1">
-      <List
-        listRef={listRef}
-        rowCount={messages.length}
-        rowHeight={MESSAGE_HEIGHT}
-        rowComponent={renderMessage}
-        rowProps={{}}
-        defaultHeight={height}
-        className="scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
-      />
+    <div className="flex-1 h-full">
+      <div
+        ref={containerRef}
+        className="overflow-y-auto h-full scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
+        onScroll={handleScroll}
+      >
+        {/* Spacer for content above visible area */}
+        <div style={{ height: visibleRange.startIndex * MESSAGE_HEIGHT }} />
+
+        {/* Visible messages */}
+        {visibleMessages.map((message, index) => {
+          const actualIndex = visibleRange.startIndex + index;
+          return (
+            <div
+              key={message.id || `temp-${actualIndex}`}
+              className="px-4 py-1"
+            >
+              <MessageItem
+                message={message}
+                isOwn={message.sender === currentUserId}
+              />
+            </div>
+          );
+        })}
+
+        {/* Spacer for content below visible area */}
+        <div style={{ height: (messages.length - visibleRange.endIndex) * MESSAGE_HEIGHT }} />
+      </div>
     </div>
   );
 };

@@ -12,13 +12,15 @@ function App() {
     isLoading,
     error,
     loadChats,
-    setActiveChat
+    setActiveChat,
+    updateLastMessage
   } = useChatsStore();
 
   const {
     messagesByChatId,
     loadingByChatId,
-    loadMessages
+    loadMessages,
+    sendMessage: sendMessageAction
   } = useMessagesStore();
 
   useEffect(() => {
@@ -35,6 +37,19 @@ function App() {
   const activeChat = chats.find(chat => chat.id === activeChatId);
   const messages = activeChatId ? messagesByChatId[activeChatId] || [] : [];
   const isLoadingMessages = activeChatId ? loadingByChatId[activeChatId] : false;
+
+  const handleSendMessage = async (content: string) => {
+    if (!activeChatId) return;
+
+    try {
+      await sendMessageAction(activeChatId, content, CURRENT_USER_ID);
+      // Update chat preview with the sent message
+      updateLastMessage(activeChatId, content, new Date());
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      // Could show a toast notification here
+    }
+  };
 
   return (
     <AppLayout>
@@ -83,7 +98,15 @@ function App() {
         ))}
       </ChatList>
 
-      <ChatWindow chatTitle={activeChat?.title}>
+      <ChatWindow
+        chatTitle={activeChat?.title}
+        input={
+          <MessageInput
+            onSendMessage={handleSendMessage}
+            disabled={!activeChatId || isLoadingMessages}
+          />
+        }
+      >
         {isLoadingMessages ? (
           <div className="flex-1 flex items-center justify-center p-4">
             <div className="text-center text-gray-500">
@@ -92,16 +115,11 @@ function App() {
             </div>
           </div>
         ) : (
-          <MessageList messages={messages} currentUserId={CURRENT_USER_ID} height={500} />
+          <MessageList messages={messages} currentUserId={CURRENT_USER_ID} />
         )}
-
-        {/* Message input */}
-        <MessageInput
-          onSendMessage={(message) => console.log('Send message:', message)}
-        />
       </ChatWindow>
     </AppLayout>
   )
 }
 
-export default App
+export default App;

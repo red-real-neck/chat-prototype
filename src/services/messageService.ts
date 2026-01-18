@@ -79,3 +79,27 @@ export async function getMessages(chatId: string): Promise<Message[]> {
 
   return messages;
 }
+
+export async function sendMessage(
+  chatId: string,
+  content: string,
+  sender: string
+): Promise<Message> {
+  // Simulate API delay for sending (1-2 seconds)
+  const delay = 1000 + Math.random() * 1000;
+  await new Promise(resolve => setTimeout(resolve, delay));
+
+  // Generate a new message with real ID
+  const realId = `msg-${chatId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+  const message: Message = {
+    id: realId,
+    chatId,
+    content,
+    sender,
+    timestamp: new Date(),
+    status: 'sent',
+  };
+
+  return message;
+}

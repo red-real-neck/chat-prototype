@@ -27,7 +27,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   };
 
   return (
-    <div className="p-4 border-t border-gray-200 bg-white">
+    <div className="flex-shrink-0 p-4 border-t border-gray-200 bg-white">
       <form onSubmit={handleSubmit} className="flex gap-2">
         <textarea
           value={message}

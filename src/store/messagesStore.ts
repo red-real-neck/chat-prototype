@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Message, OptimisticMessage } from '@/domain/message';
-import { getMessages } from '@/services/messageService';
+import { getMessages, sendMessage } from '@/services/messageService';
+import { createOptimisticMessage } from '@/domain/message';
 
 interface MessagesState {
   // Normalized storage: Record<chatId, Message[]>
@@ -9,6 +10,7 @@ interface MessagesState {
 
   // Actions
   loadMessages: (chatId: string) => Promise<void>;
+  sendMessage: (chatId: string, content: string, sender: string) => Promise<void>;
   addMessage: (message: Message) => void;
   addOptimisticMessage: (optimisticMessage: OptimisticMessage) => void;
   receiveSocketMessage: (message: Message) => void;
@@ -37,6 +39,55 @@ export const useMessagesStore = create<MessagesState>((set) => ({
       set((state) => ({
         loadingByChatId: { ...state.loadingByChatId, [chatId]: false },
       }));
+      throw error;
+    }
+  },
+
+  sendMessage: async (chatId: string, content: string, sender: string) => {
+    // Create optimistic message
+    const optimisticMessage = createOptimisticMessage(chatId, content, sender);
+
+    // Add optimistic message immediately
+    set((state) => ({
+      messagesByChatId: {
+        ...state.messagesByChatId,
+        [chatId]: [...(state.messagesByChatId[chatId] || []), optimisticMessage],
+      },
+    }));
+
+    try {
+      // Send message via service
+      const realMessage = await sendMessage(chatId, content, sender);
+
+      // Confirm optimistic message with real data
+      set((state) => {
+        const chatMessages = state.messagesByChatId[chatId] || [];
+        const updatedMessages = chatMessages.map((msg) =>
+          msg.id === optimisticMessage.id
+            ? { ...realMessage } // Replace with real message
+            : msg
+        );
+
+        return {
+          messagesByChatId: {
+            ...state.messagesByChatId,
+            [chatId]: updatedMessages,
+          },
+        };
+      });
+    } catch (error) {
+      // Remove optimistic message on error
+      set((state) => {
+        const chatMessages = state.messagesByChatId[chatId] || [];
+        const filteredMessages = chatMessages.filter((msg) => msg.id !== optimisticMessage.id);
+
+        return {
+          messagesByChatId: {
+            ...state.messagesByChatId,
+            [chatId]: filteredMessages,
+          },
+        };
+      });
       throw error;
     }
   },
