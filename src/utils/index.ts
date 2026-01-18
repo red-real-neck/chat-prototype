@@ -1,0 +1,1 @@
+export { generateAvatar } from './avatarGenerator';

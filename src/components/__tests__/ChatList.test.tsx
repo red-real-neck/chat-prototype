@@ -3,12 +3,14 @@ import userEvent from '@testing-library/user-event';
 import { ChatList } from '../ChatList';
 import { ChatListItem } from '../ChatListItem';
 import type { ChatPreview } from '@/domain/chat';
+import { generateAvatar } from '@/utils/avatarGenerator';
 
 // Mock data for testing
 const mockChats: ChatPreview[] = [
   {
     id: 'chat-1',
     title: 'Alice Johnson',
+    avatar: generateAvatar('Alice Johnson'),
     lastMessage: 'Hey, how are you?',
     lastMessageAt: new Date('2024-01-19T10:30:00'),
     unreadCount: 2,
@@ -16,6 +18,7 @@ const mockChats: ChatPreview[] = [
   {
     id: 'chat-2',
     title: 'Bob Smith',
+    avatar: generateAvatar('Bob Smith'),
     lastMessage: 'Thanks for the help!',
     lastMessageAt: new Date('2024-01-19T09:15:00'),
     unreadCount: 0,

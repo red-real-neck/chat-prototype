@@ -26,24 +26,33 @@ export const ChatListItem: React.FC<ChatListItemProps> = ({
       }`}
       onClick={onClick}
     >
-      <div className="flex justify-between items-start mb-1">
-        <h3 className="font-medium text-gray-900 truncate flex-1">
-          {chat.title}
-        </h3>
-        <span className="text-xs text-gray-500 ml-2 flex-shrink-0">
-          {formatTime(chat.lastMessageAt)}
-        </span>
-      </div>
-      <p className="text-sm text-gray-600 truncate mb-1">
-        {chat.lastMessage}
-      </p>
-      {chat.unreadCount > 0 && (
-        <div className="flex justify-end">
-          <span className="bg-blue-500 text-white text-xs rounded-full px-2 py-1">
-            {chat.unreadCount}
-          </span>
+      <div className="flex items-start mb-1">
+        <img
+          src={chat.avatar}
+          alt={`${chat.title} avatar`}
+          className="w-10 h-10 rounded-lg mr-3 flex-shrink-0"
+        />
+        <div className="flex-1 min-w-0">
+          <div className="flex justify-between items-start mb-1">
+            <h3 className="font-medium text-gray-900 truncate flex-1">
+              {chat.title}
+            </h3>
+            <span className="text-xs text-gray-500 ml-2 flex-shrink-0">
+              {formatTime(chat.lastMessageAt)}
+            </span>
+          </div>
+          <p className="text-sm text-gray-600 truncate mb-1">
+            {chat.lastMessage}
+          </p>
+          {chat.unreadCount > 0 && (
+            <div className="flex justify-end">
+              <span className="bg-blue-500 text-white text-xs rounded-full px-2 py-1">
+                {chat.unreadCount}
+              </span>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 };
